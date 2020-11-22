@@ -363,3 +363,37 @@ async fn index_option_defaults_test(defaults: Option<IndexOptionDefaults>, name:
     };
     assert_eq!(event_defaults, defaults);
 }
+
+#[cfg_attr(feature = "tokio-runtime", tokio::test)]
+#[cfg_attr(feature = "async-std-runtime", async_std::test)]
+#[function_name::named]
+async fn create_collection_json_schema_validator() {
+    let client = TestClient::new().await;
+
+    let db = client.database(function_name!());
+    db.drop(None).await.unwrap();
+
+    let options = CreateCollectionOptions::builder()    
+        .validation(Some(
+	    doc! {
+		"$jsonSchema:": {
+		"bsonType": "object",
+		"required": ["name"],
+		"properties": {
+		    "name": {
+			"bsonType": "string"
+		    }
+		}
+		}
+	    }
+	    ))
+        .build();
+
+    db.create_collection(function_name!(), options).await.unwrap();
+
+    db.collection(function_name!())
+	.insert_one(doc!{
+	    "name":"fred"
+	}, None)
+	.await.unwrap();
+}
